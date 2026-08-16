@@ -13,8 +13,9 @@
 
 runcmd:
   # --- Install Docker CE from the official Fedora repo -----------------------
-  - dnf -y install dnf-plugins-core
-  - dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+  # Fetch the repo file directly with curl - works on both dnf4 and dnf5
+  # (Fedora 41+), where the `config-manager --add-repo` syntax changed.
+  - curl -fsSL https://download.docker.com/linux/fedora/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo
   - dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable --now docker
 
