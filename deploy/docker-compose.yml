@@ -1,0 +1,48 @@
+# Quappe — single-host deployment (Docker Compose).
+#
+# Runs the published Docker Hub images. Web is exposed on the host; the service
+# is internal-only (web proxies /api/* to it over the compose network). SQLite +
+# the embedding-model cache live on a named volume so they survive restarts.
+#
+# Usage:
+#   cp .env.example .env   # then edit QUAPPE_SECRET
+#   docker compose pull
+#   docker compose up -d
+#
+# See ../README.md for the full DigitalOcean walkthrough.
+
+services:
+  service:
+    image: quappeorg/quappe-service:latest
+    restart: unless-stopped
+    environment:
+      # JWT signing secret — MUST be set (see .env). Identities invalidate if it changes.
+      QUAPPE_SECRET: ${QUAPPE_SECRET:?set QUAPPE_SECRET in .env}
+      QUAPPE_DB_PATH: /data/quappe.db
+      NODE_ENV: production
+      PORT: "3000"
+      # Optional LLM features (pulse/translation/variants). Leave unset to disable gracefully.
+      OLLAMA_URL: ${OLLAMA_URL:-}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+    volumes:
+      - quappe-data:/data
+    # Not published to the host — only reachable by `web` on the internal network.
+    expose:
+      - "3000"
+
+  web:
+    image: quappeorg/quappe-web:latest
+    restart: unless-stopped
+    depends_on:
+      - service
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # In-cluster/compose DNS name of the service.
+      PRIVATE_SERVICE_URL: http://service:3000
+    ports:
+      # host:container — serve the UI on host port 80 (http). TLS added later.
+      - "80:3000"
+
+volumes:
+  quappe-data:
