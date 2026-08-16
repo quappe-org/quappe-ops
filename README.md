@@ -20,11 +20,19 @@ live on a persistent Docker volume.
 
 ### Fastest path: paste the cloud-init script
 
-On **Create → Droplets**, paste the entire contents of
-[`deploy/cloud-init.yml`](./deploy/cloud-init.yml) into the **Startup Scripts**
-box. It runs once on first boot: installs Docker, fetches the compose file,
-generates a `QUAPPE_SECRET`, opens the firewall, and starts everything. After
-boot, open **http://YOUR_DROPLET_IP**. (Then skip to "Updating" below.)
+On **Create → Droplets** (choose a **Fedora** image), paste the entire contents
+of [`deploy/cloud-init.yml`](./deploy/cloud-init.yml) into the **Startup
+Scripts** box. It runs once on first boot: installs Docker (via dnf + the Docker
+CE repo), fetches the compose file, generates a `QUAPPE_SECRET`, opens the
+firewall (firewalld), and starts everything. After boot, open
+**http://YOUR_DROPLET_IP**. (Then skip to "Updating" below.)
+
+> **Two gotchas learned the hard way:**
+> 1. The script targets **Fedora** (dnf/firewalld). For an Ubuntu/Debian image
+>    the package names differ (`apt`, `ufw`).
+> 2. Keep the pasted content **pure ASCII**. Curly quotes or em-dashes make
+>    cloud-init fail with `unacceptable character #x0080` and silently run
+>    nothing. Verify on the box with `cloud-init status --long`.
 
 ### Or do it manually
 

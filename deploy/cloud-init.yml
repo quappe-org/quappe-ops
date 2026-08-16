@@ -1,25 +1,34 @@
 #cloud-config
-# DigitalOcean "Startup scripts" / user-data — runs ONCE on first boot as root.
-# Paste this whole file into the Droplet's Startup Scripts box. It installs
-# Docker, fetches the compose file, generates a JWT secret, and starts Quappe.
+# DigitalOcean Startup Scripts / user-data - runs ONCE on first boot as root.
+# Paste this WHOLE file into the Droplet's Startup Scripts box, including the
+# first line (#cloud-config). It installs Docker, fetches the compose file,
+# generates a JWT secret, and starts Quappe on port 80.
 #
+# TARGET OS: Fedora (uses dnf + the official Docker CE repo + firewalld).
 # Prereq: the images quappeorg/quappe-service and quappe-web must be PUBLIC on
-# Docker Hub (or add a `docker login` step). After boot, the UI is on port 80.
-
-package_update: true
-packages:
-  - docker.io
-  - docker-compose-plugin
+# Docker Hub (or add a docker login step first).
+#
+# IMPORTANT: keep this file pure ASCII. Curly quotes or em-dashes break the
+# cloud-init YAML parser ("unacceptable character #x0080").
 
 runcmd:
+  # --- Install Docker CE from the official Fedora repo -----------------------
+  - dnf -y install dnf-plugins-core
+  - dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+  - dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable --now docker
+
+  # --- Firewall: allow SSH + HTTP (Fedora ships firewalld) -------------------
+  - firewall-cmd --permanent --add-service=ssh
+  - firewall-cmd --permanent --add-port=80/tcp
+  - firewall-cmd --reload
+
+  # --- Fetch compose file ----------------------------------------------------
   - mkdir -p /opt/quappe
   - curl -fsSL https://raw.githubusercontent.com/quappe-org/quappe-ops/main/deploy/docker-compose.yml -o /opt/quappe/docker-compose.yml
-  # Generate a strong JWT secret into .env (only if not already present).
+
+  # --- Generate a strong JWT secret into .env (only if not present) ----------
   - test -f /opt/quappe/.env || printf 'QUAPPE_SECRET=%s\n' "$(openssl rand -hex 32)" > /opt/quappe/.env
-  # Firewall: allow SSH + http.
-  - ufw allow OpenSSH
-  - ufw allow 80/tcp
-  - ufw --force enable
-  # Pull and start.
+
+  # --- Pull images and start -------------------------------------------------
   - cd /opt/quappe && docker compose pull && docker compose up -d
