@@ -19,10 +19,12 @@ runcmd:
   - dnf -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable --now docker
 
-  # --- Firewall: allow SSH + HTTP (Fedora ships firewalld) -------------------
-  - firewall-cmd --permanent --add-service=ssh
-  - firewall-cmd --permanent --add-port=80/tcp
-  - firewall-cmd --reload
+  # --- Firewall: allow SSH + HTTP if firewalld is present --------------------
+  # Many DO images ship no local firewall at all (use DO's Cloud Firewall
+  # instead). Only configure firewalld if the tool actually exists.
+  - command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --permanent --add-service=ssh || true
+  - command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --permanent --add-port=80/tcp || true
+  - command -v firewall-cmd >/dev/null 2>&1 && firewall-cmd --reload || true
 
   # --- Fetch compose file ----------------------------------------------------
   - mkdir -p /opt/quappe
