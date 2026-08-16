@@ -4,3 +4,6 @@ node_modules
 deploy/.env
 !.env.example
 !deploy/.env.example
+
+# Internal SCI/Keppel deployment notes - not for the public repo
+.sci_todo.md
