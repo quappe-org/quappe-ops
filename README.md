@@ -15,6 +15,19 @@ via [`deploy/docker-compose.yml`](./deploy/docker-compose.yml). The web UI is
 served on port 80; the service is internal-only; SQLite + the embedding model
 live on a persistent Docker volume.
 
+> **Prerequisite:** the Docker Hub images must be **public** (or add a
+> `docker login` step), otherwise `docker compose pull` can't fetch them.
+
+### Fastest path: paste the cloud-init script
+
+On **Create → Droplets**, paste the entire contents of
+[`deploy/cloud-init.yml`](./deploy/cloud-init.yml) into the **Startup Scripts**
+box. It runs once on first boot: installs Docker, fetches the compose file,
+generates a `QUAPPE_SECRET`, opens the firewall, and starts everything. After
+boot, open **http://YOUR_DROPLET_IP**. (Then skip to "Updating" below.)
+
+### Or do it manually
+
 ### 1. Create the Droplet
 
 - DigitalOcean → **Create → Droplets**.
@@ -84,9 +97,10 @@ CI publishes `:latest` on every push to `main`. To roll forward:
 
 ```bash
 cd /opt/quappe
-docker compose pull
-docker compose up -d
+./deploy.sh          # or: docker compose pull && docker compose up -d
 ```
+
+Grab the helper once: `curl -fsSL https://raw.githubusercontent.com/quappe-org/quappe-ops/main/deploy/deploy.sh -o /opt/quappe/deploy.sh && chmod +x /opt/quappe/deploy.sh`.
 
 Data survives (it's on the `quappe-data` volume). To back up:
 `docker run --rm -v quappe-data:/data -v $PWD:/backup busybox tar czf /backup/quappe-db.tgz /data`.

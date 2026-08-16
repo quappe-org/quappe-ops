@@ -1,0 +1,25 @@
+#cloud-config
+# DigitalOcean "Startup scripts" / user-data — runs ONCE on first boot as root.
+# Paste this whole file into the Droplet's Startup Scripts box. It installs
+# Docker, fetches the compose file, generates a JWT secret, and starts Quappe.
+#
+# Prereq: the images quappeorg/quappe-service and quappe-web must be PUBLIC on
+# Docker Hub (or add a `docker login` step). After boot, the UI is on port 80.
+
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-plugin
+
+runcmd:
+  - systemctl enable --now docker
+  - mkdir -p /opt/quappe
+  - curl -fsSL https://raw.githubusercontent.com/quappe-org/quappe-ops/main/deploy/docker-compose.yml -o /opt/quappe/docker-compose.yml
+  # Generate a strong JWT secret into .env (only if not already present).
+  - test -f /opt/quappe/.env || printf 'QUAPPE_SECRET=%s\n' "$(openssl rand -hex 32)" > /opt/quappe/.env
+  # Firewall: allow SSH + http.
+  - ufw allow OpenSSH
+  - ufw allow 80/tcp
+  - ufw --force enable
+  # Pull and start.
+  - cd /opt/quappe && docker compose pull && docker compose up -d
