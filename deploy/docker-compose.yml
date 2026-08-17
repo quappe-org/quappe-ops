@@ -3,6 +3,7 @@
 # Runs the published Docker Hub images. Web is exposed on the host; the service
 # is internal-only (web proxies /api/* to it over the compose network). SQLite +
 # the embedding-model cache live on a named volume so they survive restarts.
+# Ollama provides LLM features (translation, reports, categorization).
 #
 # Usage:
 #   cp .env.example .env   # then edit QUAPPE_SECRET
@@ -12,18 +13,36 @@
 # See ../README.md for the full DigitalOcean walkthrough.
 
 services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    expose:
+      - "11434"
+    # Pull the model on first start. Ollama server runs as entrypoint;
+    # the healthcheck + service depends_on ensure the model is ready.
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   service:
     image: quappeorg/quappe-service:latest
     restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
     environment:
       # JWT signing secret — MUST be set (see .env). Identities invalidate if it changes.
       QUAPPE_SECRET: ${QUAPPE_SECRET:?set QUAPPE_SECRET in .env}
       QUAPPE_DB_PATH: /data/quappe.db
       NODE_ENV: production
       PORT: "3000"
-      # Optional LLM features (pulse/translation/variants). Leave unset to disable gracefully.
-      OLLAMA_URL: ${OLLAMA_URL:-}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+      # LLM — points to the ollama container on the compose network.
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
     volumes:
       - quappe-data:/data
     # Not published to the host — only reachable by `web` on the internal network.
@@ -44,5 +63,15 @@ services:
       # host:container — serve the UI on host port 80 (http). TLS added later.
       - "80:3000"
 
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_POLL_INTERVAL: "3600"
+      WATCHTOWER_CLEANUP: "true"
+
 volumes:
   quappe-data:
+  ollama-models:
