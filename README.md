@@ -42,8 +42,13 @@ firewall (firewalld), and starts everything. After boot, open
 - Image: **Ubuntu 24.04 LTS**. Choose the **Docker** Marketplace image if
   offered (Docker preinstalled), otherwise plain Ubuntu (we install Docker in
   step 3).
-- Size: a basic **2 GB RAM / 1 vCPU** is enough to start (the embedding model
-  needs headroom; 1 GB is tight). ~$12/mo.
+- Size: **2 vCPU / 4 GB** is the recommended sweet spot for smooth running
+  (~$24/mo). The service lazily loads a multilingual embedding model (~300-600
+  MB) on first semantic search, on top of two Node processes. A **1 vCPU / 2 GB**
+  box (~$12/mo) boots and works but gets tight/sluggish once the model loads —
+  fine for a quick look, not for smooth use. Running Ollama on the same box
+  needs several GB more (or leave `/pulse` & `/my` on their graceful fallback).
+  DO RAM/CPU resizing is reversible, so starting small and bumping later is safe.
 - Add your **SSH key**. Create.
 
 ### 2. Point DNS (optional, later)
