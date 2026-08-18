@@ -1,0 +1,7 @@
+quappe.org {
+	reverse_proxy web:3000
+}
+
+www.quappe.org {
+	redir https://quappe.org{uri} permanent
+}
